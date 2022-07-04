@@ -1,0 +1,22 @@
+[
+{
+  "directory": "/home/xx/c++code/build",
+  "command": "/usr/bin/c++    -g   -o CMakeFiles/tinyWebServer.dir/main.cpp.o -c /home/xx/c++code/main.cpp",
+  "file": "/home/xx/c++code/main.cpp"
+},
+{
+  "directory": "/home/xx/c++code/build",
+  "command": "/usr/bin/c++    -g   -o CMakeFiles/tinyWebServer.dir/web_server/web_server.cpp.o -c /home/xx/c++code/web_server/web_server.cpp",
+  "file": "/home/xx/c++code/web_server/web_server.cpp"
+},
+{
+  "directory": "/home/xx/c++code/build",
+  "command": "/usr/bin/c++    -g   -o CMakeFiles/tinyWebServer.dir/http/http_connect.cpp.o -c /home/xx/c++code/http/http_connect.cpp",
+  "file": "/home/xx/c++code/http/http_connect.cpp"
+},
+{
+  "directory": "/home/xx/c++code/build",
+  "command": "/usr/bin/c++    -g   -o CMakeFiles/tinyWebServer.dir/timer/timer_list.cpp.o -c /home/xx/c++code/timer/timer_list.cpp",
+  "file": "/home/xx/c++code/timer/timer_list.cpp"
+}
+]

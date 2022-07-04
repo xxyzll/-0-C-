@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtinywebsever.a  CMakeFiles/tinywebsever.dir/tinywebsever.cpp.o
+/usr/bin/ranlib libtinywebsever.a
