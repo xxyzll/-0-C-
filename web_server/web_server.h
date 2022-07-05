@@ -17,7 +17,7 @@
 
 
 //半连接队列大小
-#define listen_size 12
+#define listen_size 2048
 //最大事件个数
 #define max_event_size 10000
 //最大文件描述符数量

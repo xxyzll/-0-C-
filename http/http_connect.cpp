@@ -12,6 +12,7 @@ const char* error_500_title = "Internal Error";
 const char* error_500_form = "There was an unusual problem serving the requested file.\n";
 
 int http_connect::epoll_fd;
+int http_connect::client_num = 0;
 //设置非阻塞
 void setnoblocking(int fd){
     int old_opt = fcntl(fd, F_GETFL);
@@ -20,46 +21,54 @@ void setnoblocking(int fd){
 }
 
 //添加一个事件
-void add_event(int epollfd, int fd, bool oneshort){
+void add_event(int epollfd, int fd, bool oneshort, bool ET_FIG){
     struct epoll_event event;
     event.data.fd = fd;
-    event.events = EPOLLIN| EPOLLRDHUP| EPOLLET;
+    event.events = EPOLLIN| EPOLLRDHUP;
     if(oneshort){
         event.events |= EPOLLONESHOT;
+    }
+    if(ET_FIG){
+        event.events |= EPOLLET;
     }
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
     setnoblocking(fd);
 }
 
-void mod_event(int epollfd, int fd, int eve){
+void mod_event(int epollfd, int fd, int eve, bool ET_FIG){
     struct epoll_event event;
     event.data.fd = fd;
-    event.events = eve | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
+    event.events = eve | EPOLLONESHOT | EPOLLRDHUP;
+    if(ET_FIG)
+        event.events |= EPOLLET;
     epoll_ctl( epollfd, EPOLL_CTL_MOD, fd, &event );
 }
 
 void remove_event( int epollfd, int fd ) {
     epoll_ctl( epollfd, EPOLL_CTL_DEL, fd, 0 );
+    http_connect::client_num -= 1;
     close(fd);
 }
 
 // 返回false表示对面关闭连接或者读取出错
 bool http_connect::read_all_data(){
     while(true){
-        if(readed_idx>= read_buff_size)
+        if(readed_idx>= read_buff_size){
+            cout<< "缓冲区满" << endl;
             return false;
+        }
+            
         int ret = recv(connect_fd, read_buff+readed_idx, read_buff_size-readed_idx, 0);
         if(ret == -1){
             // 在读取完的时候会返回
             if(errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
-            cout<< "read error" << endl;
+            cout<< "读取错误" << endl;
             return false;
         }else if(ret == 0){
-            cout<< "read ret 0" << endl;
+            cout<< "对方关闭连接" << endl;
             return false;
-        }
-           
+        } 
         readed_idx += ret;
     }
     return true;
@@ -138,7 +147,7 @@ http_connect::HTTP_CODE http_connect::process_read(){
             } break;
             // 下一步实现
             case CHECK_STATE_CONTENT:{
-
+                cout<<"error not code the method"<< endl;
             }
         }
     }
@@ -166,7 +175,7 @@ http_connect::HTTP_CODE http_connect::prase_request(char *text){
 }
 
 void http_connect::process(){
-    cout<< read_buff;
+    // cout<< read_buff;
     // 解析请求
     HTTP_CODE ret = process_read();
     if(ret == NO_REQUEST){
@@ -355,11 +364,11 @@ bool http_connect::add_content(const char* content){
 
 void http_connect::close_connect(){
     if(connect_fd != -1){
+        // cout<< "断开连接" << connect_fd << endl;
         remove_event(epoll_fd, connect_fd);
+        // cout<< "client num: " << http_connect::client_num << endl;
         connect_fd = -1;
-        close(connect_fd);
         unmap();
-        cout<< "断开连接" << connect_fd << endl;
     }
 }
 

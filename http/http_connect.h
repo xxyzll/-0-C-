@@ -24,8 +24,8 @@
 using namespace std;
 
 void setnoblocking(int fd);
-void add_event(int epollfd, int fd, bool oneshort);
-void mod_event(int epollfd, int fd, int eve);
+void add_event(int epollfd, int fd, bool oneshort, bool ET_FIG=false);
+void mod_event(int epollfd, int fd, int eve, bool ET_FIG=false);
 void remove_event( int epollfd, int fd );
 
 class http_connect{
@@ -36,6 +36,7 @@ public:
     // 网站的根目录
     const char* doc_root = "/home/xx/c++code/resource";
     static int epoll_fd;
+    static int client_num;
     int connect_fd;                         
     // HTTP请求方法，这里只支持GET
     enum METHOD {GET = 0, POST, HEAD, PUT, DELETE, TRACE, OPTIONS, CONNECT};

@@ -66,11 +66,16 @@ void tiny_web_server::run(){
     bool timeout = false;
     while(1){
         int event_count = epoll_wait(http_connect::epoll_fd, events, max_event_size, -1);
-        
+        // cout<< "event_count :" << event_count << endl;
+        if ( ( event_count < 0 ) && ( errno != EINTR ) ) {
+            printf( "epoll failure\n" );
+            break;
+        }
         for(int i=0; i< event_count; i++){
             int event_fd = events[i].data.fd;
             //新的客户端连接
             if(event_fd == listen_fd){
+                // cout<< "检测到客户端" << endl;
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof( client_address );
                 int connfd = accept( listen_fd, ( struct sockaddr* )&client_address, &client_addrlength );
@@ -78,33 +83,38 @@ void tiny_web_server::run(){
                 //初始化连接
                 connect_list[connfd].init_connect(connfd);
                 time_connect->add_timer(connfd);
+                // cout<< "客户端已经连接" << endl;
+                http_connect::client_num += 1;
             } else if(event_fd == pipefd[0]){
                 // 定时到了
                 char signals[1024];
                 recv(pipefd[0], signals, sizeof(signals), 0);
                 timeout = true;
-            }else{
+            }
+            else{
                 // 有数据可以读
                 if(events[i].events & EPOLLIN ){
+                    cout<< "正在读取数据" << endl;
                     if(connect_list[event_fd].read_all_data()){
                         work_pool->add_task(&connect_list[event_fd]);
                         time_connect->update_node(event_fd);
                     }else{
                         //出错或者对面关闭了,关闭连接
                         connect_list[event_fd].close_connect();
-                        cout<< "peer error" << endl;
+                        cout<< "读取数据失败" << endl;
                     }
                 }
                 else if( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) ) {
+                    cout<< "有错误发生" << endl;
                     connect_list[event_fd].close_connect();
                 }else if( events[i].events & EPOLLOUT ) {
                     if( !connect_list[event_fd].write() ) {
+                        cout<< "正在写数据" << endl;
                         connect_list[event_fd].close_connect();
                     }
                 }
             }
-        }
-            
+        }    
         //检查超时
         if(timeout){
             chack_connect();
@@ -118,7 +128,7 @@ void tiny_web_server::chack_connect(){
     for(int i=0; i< over_time_fd.size(); i++){
         if(connect_list[over_time_fd[i]].connect_fd != -1){
             connect_list[over_time_fd[i]].close_connect();
-            cout<< "time over" << endl;
+            // << "定时关闭连接" << endl;
         }
     }
 }
