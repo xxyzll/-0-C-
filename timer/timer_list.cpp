@@ -71,3 +71,13 @@ vector<int> timer_list::scan(){
     }
     return fds;
 }
+
+void timer_list::addsig(int sig, void(handler)(int), bool restart){
+    struct sigaction sa;
+    memset(&sa, '\0', sizeof(sa));
+    sa.sa_handler = handler;
+    if (restart)
+        sa.sa_flags |= SA_RESTART;
+    sigfillset(&sa.sa_mask);
+    sigaction(sig, &sa, NULL);
+}

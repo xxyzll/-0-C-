@@ -17,12 +17,12 @@
 
 
 //半连接队列大小
-#define listen_size 2048
+#define listen_size 1024
 //最大事件个数
 #define max_event_size 10000
 //最大文件描述符数量
 #define MAX_FD_NUM 65535
-#define time_val_alarm 3
+#define time_val_alarm 2
 
 class tiny_web_server{
 public:
@@ -50,5 +50,6 @@ private:
     static void sigalrm_handler(int sig);
     // 检查连接
     void chack_connect();
+    
 };
 #endif

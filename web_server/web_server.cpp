@@ -5,7 +5,7 @@ int tiny_web_server::listen_fd;
 
 void tiny_web_server::sigalrm_handler(int sig){
     write(pipefd[1], &sig, sizeof(sig));
-    // cout<< "定时到" << endl;
+    // cout<< "定时到" << sig << endl;
 }
 
 tiny_web_server::tiny_web_server(){
@@ -34,10 +34,15 @@ tiny_web_server::tiny_web_server(){
     work_pool = new th_pool<http_connect>(pthread_num);
     //定时链表
     time_connect = new timer_list(time_val_alarm);
+ 
+    //信号捕获
+    time_connect->addsig(SIGPIPE, SIG_IGN);
+    time_connect->addsig(SIGALRM, sigalrm_handler, true);
+    time_connect->addsig(SIGTERM, sigalrm_handler, true);
+
     //定时器
     set_timer();
-    //信号捕获
-    signal(SIGALRM, sigalrm_handler);
+
     //开启管道
     socketpair(AF_UNIX, SOCK_STREAM, 0, pipefd);
     //设置写端非阻塞
@@ -52,14 +57,7 @@ tiny_web_server::~tiny_web_server(){
 }
 
 void tiny_web_server::set_timer(){
-    struct itimerval itv, oldtv;
-    //~ 定时间隔1秒0微秒
-    itv.it_interval.tv_sec = 1;
-    itv.it_interval.tv_usec = 0;
-    //~ 初始计时
-    itv.it_value = itv.it_interval;
-    //~ 打开定时器ITIMER_REAL
-    setitimer(ITIMER_REAL, &itv, &oldtv);
+    alarm(time_val_alarm);
 }
 
 void tiny_web_server::run(){
@@ -80,7 +78,7 @@ void tiny_web_server::run(){
                 socklen_t client_addrlength = sizeof( client_address );
                 int connfd = accept( listen_fd, ( struct sockaddr* )&client_address, &client_addrlength );
                 add_event(http_connect::epoll_fd, connfd, true);
-                //初始化连接
+                //初始化连
                 connect_list[connfd].init_connect(connfd);
                 time_connect->add_timer(connfd);
                 // cout<< "客户端已经连接" << endl;
@@ -94,22 +92,21 @@ void tiny_web_server::run(){
             else{
                 // 有数据可以读
                 if(events[i].events & EPOLLIN ){
-                    cout<< "正在读取数据" << endl;
+                    time_connect->update_node(event_fd);
                     if(connect_list[event_fd].read_all_data()){
                         work_pool->add_task(&connect_list[event_fd]);
-                        time_connect->update_node(event_fd);
                     }else{
+                        perror("read::::::::");
                         //出错或者对面关闭了,关闭连接
                         connect_list[event_fd].close_connect();
-                        cout<< "读取数据失败" << endl;
                     }
                 }
                 else if( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) ) {
-                    cout<< "有错误发生" << endl;
+                    perror("error::::::::");
                     connect_list[event_fd].close_connect();
                 }else if( events[i].events & EPOLLOUT ) {
+                    time_connect->update_node(event_fd);
                     if( !connect_list[event_fd].write() ) {
-                        cout<< "正在写数据" << endl;
                         connect_list[event_fd].close_connect();
                     }
                 }
@@ -124,11 +121,12 @@ void tiny_web_server::run(){
 }
 
 void tiny_web_server::chack_connect(){
+    alarm(time_val_alarm);
     vector<int> over_time_fd = time_connect->scan();
     for(int i=0; i< over_time_fd.size(); i++){
         if(connect_list[over_time_fd[i]].connect_fd != -1){
             connect_list[over_time_fd[i]].close_connect();
-            // << "定时关闭连接" << endl;
+            cout << "定时关闭连接" << endl;
         }
     }
 }

@@ -107,6 +107,7 @@ private:
     bool add_statue_line(int status, const char* title );                   // 写入状态行
     bool add_header(int content_len);       // 写入头标识
     bool add_content(const char* content);  // 写入内容
+    int get_unsend_len();
 
     vector<pair<char*, METHOD>> methods = {{"GET", GET}, {"POST", POST}};   // 支持的请求方法
     vector<char*> versions = {"http/1.1", "http/2.1"};                      // 支持的版本号

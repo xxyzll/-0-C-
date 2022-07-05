@@ -5,6 +5,8 @@
 #include <time.h>
 #include <unordered_map>
 #include <vector>
+#include <signal.h>
+#include <string.h>
 
 using namespace std;
 // 链表节点定义
@@ -34,6 +36,7 @@ class timer_list
 public:
     timer_list(unsigned int t);
     ~timer_list();
+    void addsig(int sig, void(handler)(int), bool restart = true);
     bool add_timer(int fd, unsigned int num_time_slot= 1);         //添加一个定时器
     bool update_node(int fd, unsigned int num_time_slot= 1);       //更新一个节点
     vector<int> scan();                                            //扫描节点
@@ -46,8 +49,6 @@ private:
 
     bool insert_to_end(node *n);                    //插入节点到末尾
     bool del_node(node* n);                         //删除一个节点
-    
-    
 };
 
 #endif

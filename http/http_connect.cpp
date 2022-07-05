@@ -32,7 +32,7 @@ void add_event(int epollfd, int fd, bool oneshort, bool ET_FIG){
         event.events |= EPOLLET;
     }
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
-    setnoblocking(fd);
+    // setnoblocking(fd);
 }
 
 void mod_event(int epollfd, int fd, int eve, bool ET_FIG){
@@ -52,25 +52,33 @@ void remove_event( int epollfd, int fd ) {
 
 // 返回false表示对面关闭连接或者读取出错
 bool http_connect::read_all_data(){
-    while(true){
-        if(readed_idx>= read_buff_size){
-            cout<< "缓冲区满" << endl;
-            return false;
-        }
+    // while(true){
+    //     if(readed_idx>= read_buff_size){
+    //         cout<< "缓冲区满" << endl;
+    //         return false;
+    //     }
             
-        int ret = recv(connect_fd, read_buff+readed_idx, read_buff_size-readed_idx, 0);
-        if(ret == -1){
-            // 在读取完的时候会返回
-            if(errno == EAGAIN || errno == EWOULDBLOCK)
-                break;
-            cout<< "读取错误" << endl;
-            return false;
-        }else if(ret == 0){
-            cout<< "对方关闭连接" << endl;
-            return false;
-        } 
-        readed_idx += ret;
+    //     int ret = recv(connect_fd, read_buff+readed_idx, read_buff_size-readed_idx, 0);
+    //     if(ret == -1){
+    //         // 在读取完的时候会返回
+    //         if(errno == EAGAIN || errno == EWOULDBLOCK)
+    //             break;
+    //         cout<< "读取错误" << endl;
+    //         return false;
+    //     }else if(ret == 0){
+    //         cout<< "对方关闭连接" << endl;
+    //         return false;
+    //     } 
+    //     readed_idx += ret;
+    // }
+    int ret = recv(connect_fd, read_buff+readed_idx, read_buff_size-readed_idx, 0);
+    if (ret <= 0)
+    {
+        cout << "error: num "<< error << endl;
+        return false;
     }
+    readed_idx += ret;
+    
     return true;
 }
 
@@ -85,8 +93,10 @@ void http_connect::init_connect(int connect_fd){
     content_length = 0;
     master_state = CHECK_STATE_REQUESTLINE;
     writed_idx = 0;
-    keep_connect = true;
+    keep_connect = false;
     file_address = 0;
+    memset(read_buff, 0, read_buff_size);
+    memset(write_buff, 0, write_buf_size);
 }
 
 http_connect::http_connect(int connect_fd){
@@ -96,7 +106,9 @@ http_connect::http_connect(int connect_fd){
     content_length = 0;
     master_state = CHECK_STATE_REQUESTLINE;
     writed_idx = 0;
-    keep_connect = true;
+    keep_connect = false;
+    memset(read_buff, 0, read_buff_size);
+    memset(write_buff, 0, write_buf_size);
 }
 
 // 解析一行数据, 解析完的数据以\0方式结尾
@@ -115,9 +127,15 @@ http_connect::LINE_STATUS http_connect::prase_line(){
                 return LINE_OK;
             }else
                 return LINE_BAD;
-        }else if(read_buff[prase_idx] == '\n')
-            // 所有的都是由\r\n结尾的，突然出现\n说明错误
+        }else if(read_buff[prase_idx] == '\n'){
+            if (prase_idx > 1 && read_buff[prase_idx - 1] == '\r')
+            {
+                read_buff[prase_idx - 1] = '\0';
+                read_buff[prase_idx++] = '\0';
+                return LINE_OK;
+            }
             return LINE_BAD;
+        }
     }
     return LINE_OPEN;
 }
@@ -149,9 +167,11 @@ http_connect::HTTP_CODE http_connect::process_read(){
             case CHECK_STATE_CONTENT:{
                 cout<<"error not code the method"<< endl;
             }
+            default:{
+                cout<< "意外的情况" <<endl;
+            }
         }
     }
-
     return NO_REQUEST;
 }
 
@@ -175,7 +195,7 @@ http_connect::HTTP_CODE http_connect::prase_request(char *text){
 }
 
 void http_connect::process(){
-    // cout<< read_buff;
+    cout<< read_buff << endl;
     // 解析请求
     HTTP_CODE ret = process_read();
     if(ret == NO_REQUEST){
@@ -375,7 +395,7 @@ void http_connect::close_connect(){
 bool http_connect::write(){
     int temp = 0;
     int have_send = 0;              //已经发送的字节
-    int need_to_send = writed_idx;  //需要发送的字节
+    int need_to_send = get_unsend_len();  //需要发送的字节
     // cout<< "write buff: "<< write_buff << endl;
     if(need_to_send == 0){
         mod_event(epoll_fd, connect_fd, EPOLLIN);
@@ -385,31 +405,52 @@ bool http_connect::write(){
 
     while(1){
         temp = writev(connect_fd, m_iv, m_iv_count);
-        if(temp <= -1){
-            // 如果TCP写缓冲没有空间，则等待下一轮EPOLLOUT事件，虽然在此期间，
-            // 服务器无法立即接收到同一客户的下一个请求，但可以保证连接的完整性。
-            if( errno == EAGAIN ) {
+        if (temp < 0)
+        {
+            if (errno == EAGAIN)
+            {
                 mod_event( epoll_fd, connect_fd, EPOLLOUT );
                 return true;
             }
             unmap();
             return false;
         }
+
         need_to_send -= temp;
         have_send += temp;
-        if(need_to_send<= have_send){
+
+        
+        if(have_send>= m_iv[0].iov_len){
+            m_iv[1].iov_base = (char*)m_iv[1].iov_base + (have_send-m_iv[0].iov_len);
+            m_iv[1].iov_len = need_to_send;
+            m_iv[0].iov_len = 0;
+        }else{
+            m_iv[0].iov_base = (char*)m_iv[0].iov_base+ have_send;
+            m_iv[0].iov_len -= have_send;
+        }
+           
+        if(need_to_send<= 0){
             unmap();
             if(keep_connect){
                 init_connect(connect_fd);
                 mod_event(epoll_fd, connect_fd, EPOLLIN);
                 return true;
             }else{
+                cout<< "close" << endl;
                 mod_event(epoll_fd, connect_fd, EPOLLIN);
                 return false;
             }
         }
     }
     return true;
+}
+
+int http_connect::get_unsend_len(){
+    int ret = 0;
+    for(int i=0; i< m_iv_count; i++){
+        ret += m_iv[i].iov_len;
+    }
+    return ret;
 }
 
 void http_connect::unmap(){
