@@ -37,8 +37,8 @@ tiny_web_server::tiny_web_server(){
  
     //信号捕获
     time_connect->addsig(SIGPIPE, SIG_IGN);
-    time_connect->addsig(SIGALRM, sigalrm_handler, true);
-    time_connect->addsig(SIGTERM, sigalrm_handler, true);
+    time_connect->addsig(SIGALRM, sigalrm_handler, false);
+    time_connect->addsig(SIGTERM, sigalrm_handler, false);
 
     //定时器
     set_timer();

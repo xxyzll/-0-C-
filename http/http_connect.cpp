@@ -394,7 +394,7 @@ void http_connect::close_connect(){
 
 bool http_connect::write(){
     int temp = 0;
-    int have_send = 0;              //已经发送的字节
+    // int have_send = 0;              //已经发送的字节
     int need_to_send = get_unsend_len();  //需要发送的字节
     // cout<< "write buff: "<< write_buff << endl;
     if(need_to_send == 0){
@@ -417,16 +417,14 @@ bool http_connect::write(){
         }
 
         need_to_send -= temp;
-        have_send += temp;
 
-        
-        if(have_send>= m_iv[0].iov_len){
-            m_iv[1].iov_base = (char*)m_iv[1].iov_base + (have_send-m_iv[0].iov_len);
+        if(temp>= m_iv[0].iov_len){
+            m_iv[1].iov_base = (char*)m_iv[1].iov_base + (temp-m_iv[0].iov_len);
             m_iv[1].iov_len = need_to_send;
             m_iv[0].iov_len = 0;
         }else{
-            m_iv[0].iov_base = (char*)m_iv[0].iov_base+ have_send;
-            m_iv[0].iov_len -= have_send;
+            m_iv[0].iov_base = (char*)m_iv[0].iov_base+ temp;
+            m_iv[0].iov_len -= temp;
         }
            
         if(need_to_send<= 0){
