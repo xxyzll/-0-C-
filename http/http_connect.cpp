@@ -128,8 +128,7 @@ http_connect::LINE_STATUS http_connect::prase_line(){
             }else
                 return LINE_BAD;
         }else if(read_buff[prase_idx] == '\n'){
-            if (prase_idx > 1 && read_buff[prase_idx - 1] == '\r')
-            {
+            if (prase_idx > 1 && read_buff[prase_idx - 1] == '\r'){
                 read_buff[prase_idx - 1] = '\0';
                 read_buff[prase_idx++] = '\0';
                 return LINE_OK;
@@ -138,6 +137,43 @@ http_connect::LINE_STATUS http_connect::prase_line(){
         }
     }
     return LINE_OPEN;
+}
+
+bool http_connect::get_user_name(void* arg, char* text){
+    http_connect* ptr = (http_connect*)arg;
+    ptr->user.user = text;
+    
+    return true;
+}
+
+bool http_connect::get_user_password(void* arg, char* text){
+    http_connect* ptr = (http_connect*)arg;
+    ptr->user.password = text;
+    return true;
+}
+
+http_connect::HTTP_CODE http_connect::prase_body(char* text){
+    if(referer == string("welcome.html"))
+        return GET_REQUEST;
+    for(int i=0; i< content_length; i++){
+        int j=i;
+        while(j< content_length&& text[j]!= '=')
+            j++;
+        if(j == content_length)
+            return BAD_REQUEST;
+        text[j] = 0;
+        char* key = text+i;
+        i= j+1;
+        while(j< content_length&& text[j]!= '&')
+            j++;
+        if(j< content_length)
+            text[j] = 0;
+        char* val = text+i;
+        i = j;
+        if(deal_body_funs.find(key)!= deal_body_funs.end() && !deal_body_funs[key](this, val))
+            return BAD_REQUEST;
+    }
+    return GET_REQUEST;
 }
 
 // 解析数据
@@ -161,17 +197,22 @@ http_connect::HTTP_CODE http_connect::process_read(){
                 if(ret == BAD_REQUEST)
                     return BAD_REQUEST;
                 if(ret == GET_REQUEST)
-                    return do_request();
+                    return recall_function[req_method]((void*)this);
             } break;
             // 下一步实现
             case CHECK_STATE_CONTENT:{
-                cout<<"error not code the method"<< endl;
+                ret = prase_body(text);
+                if(ret == BAD_REQUEST)
+                    return BAD_REQUEST;
+                if(ret == GET_REQUEST && req_method == POST)
+                    return recall_function[req_method]((void*)this);
             }
             default:{
                 cout<< "意外的情况" <<endl;
             }
         }
     }
+    cout<< "exit" << endl;
     return NO_REQUEST;
 }
 
@@ -299,17 +340,42 @@ bool http_connect::gethost(void* arg, char* text){
     return true;
 }
 
+bool http_connect::getreferer(void* arg, char* text){
+    /*
+        例: http://192.168.31.132:10000/welcome.html -> welcome.html
+    */
+    http_connect* ptr = (http_connect*) arg;
+    text = strrchr(text, '/');
+    //未找到
+    if(!text)
+        return false;
+    ptr->referer = text+1;
+    return true;
+}
+
+bool http_connect::getContent_length(void* arg, char* text){
+    http_connect* ptr = (http_connect*) arg;
+    if (! text) { 
+        return false;
+    }
+    ptr->content_length = stoi(text);
+    return true;
+}
+
 http_connect::HTTP_CODE http_connect::prase_head(char* text){
     // 进入下一个状态。如果为get请求直接do
     if(text[0] == '\0'){
         if(content_length == 0)
             return GET_REQUEST;
         master_state = CHECK_STATE_CONTENT;
+        cout << "状态改变" <<endl;
+        return NO_REQUEST;
     }
 
     char *key = text;
     text = strpbrk(text, ":\t");
     if (! text) { 
+        cout<< "error cur" << endl;
         return BAD_REQUEST;
     }
     // 跳过冒号和空格
@@ -323,29 +389,78 @@ http_connect::HTTP_CODE http_connect::prase_head(char* text){
     return NO_REQUEST;
 }
 
-http_connect::HTTP_CODE http_connect::do_request(){
+http_connect::HTTP_CODE http_connect::deal_with_get(void* instance){
+    http_connect* ptr = (http_connect*) instance;
     // 拼接文件名
-    strcpy(real_file, doc_root);
-    int len = strlen( doc_root );
-    strncpy( real_file + len, url, max_file_len-len-1 );
+    strcpy(ptr->real_file, ptr->doc_root);
+    int len = strlen( ptr->doc_root );
+    strncpy( ptr->real_file + len, ptr->url, max_file_len-len-1 );
 
     // 获取real_file文件的相关的状态信息，-1失败，0成功
-    if ( stat( real_file, &file_stat ) < 0 ) {
+    if ( stat( ptr->real_file, &ptr->file_stat ) < 0 ) {
         return NO_RESOURCE;
     }
 
     // 判断访问权限
-    if(!(file_stat.st_mode & S_IROTH))
+    if(!(ptr->file_stat.st_mode & S_IROTH))
         return FORBIDDEN_REQUEST;
     
     // 判断是否是目录
-    if ( S_ISDIR( file_stat.st_mode ) ) 
+    if ( S_ISDIR( ptr->file_stat.st_mode ) ) 
         return BAD_REQUEST;
     
-    int fd = open( real_file, O_RDONLY );
-    file_address = (char*)mmap(NULL, file_stat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    int fd = open( ptr->real_file, O_RDONLY );
+    ptr->file_address = (char*)mmap(NULL, ptr->file_stat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     // cout<< real_file << endl;
     return FILE_REQUEST;
+}
+
+http_connect::HTTP_CODE http_connect::welcome_action(void* instance){
+    http_connect* ptr = (http_connect*) instance;
+    cout << "welcome" << endl;
+    return ptr->deal_with_get(ptr);;
+}
+
+http_connect::HTTP_CODE http_connect::log_action(void* instance){
+    http_connect* ptr = (http_connect*) instance;
+    MYSQL* database_conn = new MYSQL;
+    connectionRAII(&database_conn, mysql_connect::get_instance());
+    char query[120] = {0}; 
+    // select count(1) from user where name = "xx" and password = "123"
+    strcpy(query, "select count(1) from user where name = ");
+    strcat(query, "'");
+    strcat(query, ptr->user.user);
+    strcat(query, "' and password = ");
+    strcat(query, "'");
+    strcat(query, ptr->user.password);
+    strcat(query, "'");
+    if (mysql_query(database_conn, query)) {
+        cout << "查询失败" << endl;
+        return BAD_REQUEST;
+    }
+    MYSQL_RES *result;
+    result = mysql_store_result(database_conn);
+    int row_num = mysql_num_rows(result);
+    int col_num = mysql_num_fields(result);
+    MYSQL_ROW sql_row;
+    sql_row = mysql_fetch_row(result);
+    if('1' == sql_row[0][0]){
+        // 有这个用户
+        ptr->url = "/welcome.html";
+    }else{
+        // 没有这个用户
+        ptr->url = "/logError.html";
+    }
+    return ptr->deal_with_get(ptr);
+}
+
+http_connect::HTTP_CODE http_connect::deal_with_post(void* instance){
+    http_connect* ptr = (http_connect*) instance;
+    string url = ptr->url; 
+    if(ptr->post_actions.find(url) != ptr->post_actions.end())
+        return ptr->post_actions[url](instance);
+    cout<< "exit" << endl;
+    return BAD_REQUEST;
 }
 
 bool http_connect::write_in_buff(const char* format, ...){

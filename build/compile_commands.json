@@ -18,5 +18,10 @@
   "directory": "/home/xx/c++code/build",
   "command": "/usr/bin/c++    -g   -o CMakeFiles/tinyWebServer.dir/timer/timer_list.cpp.o -c /home/xx/c++code/timer/timer_list.cpp",
   "file": "/home/xx/c++code/timer/timer_list.cpp"
+},
+{
+  "directory": "/home/xx/c++code/build",
+  "command": "/usr/bin/c++    -g   -o CMakeFiles/tinyWebServer.dir/database/mysql_conn.cpp.o -c /home/xx/c++code/database/mysql_conn.cpp",
+  "file": "/home/xx/c++code/database/mysql_conn.cpp"
 }
 ]

@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <sys/uio.h>
+#include "../database/mysql_conn.h"
 
 using namespace std;
 
@@ -27,6 +28,12 @@ void setnoblocking(int fd);
 void add_event(int epollfd, int fd, bool oneshort, bool ET_FIG=false);
 void mod_event(int epollfd, int fd, int eve, bool ET_FIG=false);
 void remove_event( int epollfd, int fd );
+
+struct login_par{
+    char* user;
+    char* password;
+};
+typedef struct login_par login_par;
 
 class http_connect{
 public:
@@ -93,6 +100,8 @@ private:
     struct iovec m_iv[2];                   // 分散写               
     int m_iv_count;
     void unmap();
+    char* referer;                          // 请求来源
+    login_par user;                         // 登录参数
 
     int content_length;                     // 请求体的长度，默认为0
     int prase_idx;                          // 当前解析的idx
@@ -101,6 +110,7 @@ private:
     HTTP_CODE process_read();               // 解析数据
     HTTP_CODE prase_request(char* text);    // 解析请求行
     HTTP_CODE prase_head(char* text);       // 解析请求头
+    HTTP_CODE prase_body(char* text);       // 解析请求体
 
     bool process_write(HTTP_CODE state);    // 写回响应
     bool write_in_buff(const char* format, ...);                            // 写入缓冲
@@ -115,9 +125,34 @@ private:
     bool get_version(char *text);           // 获取版本
     bool get_url(char*& text);              // 获取目录
 
+    // 注册即可，无需动解析部分
     static bool gethost(void* arg, char*text);                               // 获取端口
+    static bool getreferer(void* arg, char*text);                            // 获取请求的来源
+    static bool getContent_length(void* arg, char*text);                     // 获取正文长度
     // 头处理函数集合
-    unordered_map<string, bool (*)(void*, char*)> deal_head_funs = {{"Host", gethost}};
-    HTTP_CODE do_request();                 // 将文件放入内存映射区
+    unordered_map<string, bool (*)(void*, char*)> deal_head_funs = {{"Host", gethost}, 
+                                                                    {"Referer", getreferer},
+                                                                    {"Content-Length", getContent_length}};
+
+    // 响应函数处理函数集合 
+    unordered_map<METHOD, http_connect::HTTP_CODE (*)(void*)> recall_function = {{GET, deal_with_get}, 
+                                                                                 {POST, deal_with_post}};
+    static http_connect::HTTP_CODE deal_with_get(void*);                    // 处理get请求
+    static http_connect::HTTP_CODE deal_with_post(void*);                   // 处理post请求
+
+    static bool get_user_name(void* arg, char* text);                       // 得到user名
+    static bool get_user_password(void* arg, char* text);                   // 得到user密码
+
+    // 请求体处理函数集合
+    unordered_map<string, bool (*)(void*, char*)> deal_body_funs = {{"user", get_user_name},
+                                                                    {"password", get_user_password}};
+
+    static http_connect::HTTP_CODE log_action(void* arg);
+    static http_connect::HTTP_CODE welcome_action(void* arg);
+    // post响应
+    unordered_map<string, HTTP_CODE (*)(void*)> post_actions = {{"/user_input", log_action},
+                                                                {"/picture.html", welcome_action},
+                                                                {"/video.html", welcome_action},
+                                                                {"/fans.html", welcome_action}};
 };
 #endif

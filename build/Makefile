@@ -520,6 +520,33 @@ ExperimentalBuild/fast:
 	$(MAKE) -f CMakeFiles/ExperimentalBuild.dir/build.make CMakeFiles/ExperimentalBuild.dir/build
 .PHONY : ExperimentalBuild/fast
 
+database/mysql_conn.o: database/mysql_conn.cpp.o
+
+.PHONY : database/mysql_conn.o
+
+# target to build an object file
+database/mysql_conn.cpp.o:
+	$(MAKE) -f CMakeFiles/tinyWebServer.dir/build.make CMakeFiles/tinyWebServer.dir/database/mysql_conn.cpp.o
+.PHONY : database/mysql_conn.cpp.o
+
+database/mysql_conn.i: database/mysql_conn.cpp.i
+
+.PHONY : database/mysql_conn.i
+
+# target to preprocess a source file
+database/mysql_conn.cpp.i:
+	$(MAKE) -f CMakeFiles/tinyWebServer.dir/build.make CMakeFiles/tinyWebServer.dir/database/mysql_conn.cpp.i
+.PHONY : database/mysql_conn.cpp.i
+
+database/mysql_conn.s: database/mysql_conn.cpp.s
+
+.PHONY : database/mysql_conn.s
+
+# target to generate assembly for a file
+database/mysql_conn.cpp.s:
+	$(MAKE) -f CMakeFiles/tinyWebServer.dir/build.make CMakeFiles/tinyWebServer.dir/database/mysql_conn.cpp.s
+.PHONY : database/mysql_conn.cpp.s
+
 http/http_connect.o: http/http_connect.cpp.o
 
 .PHONY : http/http_connect.o
@@ -668,6 +695,9 @@ help:
 	@echo "... ContinuousTest"
 	@echo "... ContinuousUpdate"
 	@echo "... ExperimentalBuild"
+	@echo "... database/mysql_conn.o"
+	@echo "... database/mysql_conn.i"
+	@echo "... database/mysql_conn.s"
 	@echo "... http/http_connect.o"
 	@echo "... http/http_connect.i"
 	@echo "... http/http_connect.s"

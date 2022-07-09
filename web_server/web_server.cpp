@@ -49,6 +49,8 @@ tiny_web_server::tiny_web_server(){
     setnoblocking(pipefd[1]);
     //监听读端
     add_event(http_connect::epoll_fd, pipefd[0], false);
+    //数据库连接池
+    mysql_connect::get_instance()->init(mysql_url, mysql_user, mysql_pasw, database_name, port, max_conn);
 }
 
 tiny_web_server::~tiny_web_server(){

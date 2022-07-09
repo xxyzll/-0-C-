@@ -14,7 +14,7 @@
 #include "../thread_pool/thread_pool.h"
 #include "../http/http_connect.h"
 #include "../timer/timer_list.h"
-
+#include "../database/mysql_conn.h"
 
 //半连接队列大小
 #define listen_size 1024
@@ -51,5 +51,11 @@ private:
     // 检查连接
     void chack_connect();
     
+    string mysql_url = "192.168.31.132";
+    string mysql_user = "root";
+    string mysql_pasw = "123";
+    string database_name = "user_login";
+    int port = 3306;
+    int max_conn = 3;
 };
 #endif

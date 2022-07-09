@@ -6,6 +6,22 @@
 
 #IncludeRegexTransform: 
 
+/home/xx/c++code/database/mysql_conn.cpp
+mysql_conn.h
+/home/xx/c++code/database/mysql_conn.h
+
+/home/xx/c++code/database/mysql_conn.h
+iostream
+-
+string
+-
+list
+-
+../locker/locker.h
+/home/xx/c++code/locker/locker.h
+mysql/mysql.h
+-
+
 /home/xx/c++code/http/http_connect.cpp
 http_connect.h
 /home/xx/c++code/http/http_connect.h
@@ -49,10 +65,24 @@ stdarg.h
 -
 sys/uio.h
 -
+../database/mysql_conn.h
+/home/xx/c++code/database/mysql_conn.h
+
+/home/xx/c++code/locker/locker.h
+exception
+-
+pthread.h
+-
+semaphore.h
+-
 
 /home/xx/c++code/main.cpp
 web_server/web_server.h
 /home/xx/c++code/web_server/web_server.h
+mysql/mysql.h
+-
+database/mysql_conn.h
+/home/xx/c++code/database/mysql_conn.h
 
 /home/xx/c++code/thread_pool/thread_pool.h
 pthread.h
@@ -113,4 +143,6 @@ signal.h
 /home/xx/c++code/http/http_connect.h
 ../timer/timer_list.h
 /home/xx/c++code/timer/timer_list.h
+../database/mysql_conn.h
+/home/xx/c++code/database/mysql_conn.h
 

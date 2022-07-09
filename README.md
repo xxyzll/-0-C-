@@ -3,4 +3,4 @@
 ![alt](/test/img.jpg)
 
 ### 网络结构
-![alt](/test/network_struct.jpg)
+![alt](/test/network_struct.png)
